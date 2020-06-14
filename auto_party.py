@@ -1,4 +1,4 @@
-import win32api
+import win32com.client
 import win32con
 import win32gui
 import pyautogui
@@ -38,6 +38,8 @@ def random_sleep(t):
 
 def get_window_position(return_handle=False):
     hwnd = win32gui.FindWindow(None, r'夜神模拟器')
+    shell = win32com.client.Dispatch("WScript.Shell")
+    shell.SendKeys('%')
     win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
     win32gui.SetForegroundWindow(hwnd)
     w_pos = win32gui.GetWindowRect(hwnd)
@@ -68,9 +70,9 @@ def move_click(w_pos, click_pos, t=.0):  # 移动鼠标并点击左键
     x = w_pos[0]+click_pos[0]
     y = w_pos[1]+click_pos[1]
     save_screenshots(w_pos, click_pos)
-    win32api.SetCursorPos((x, y))  # 设置鼠标位置(x, y)
-    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN |
-                         win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)  # 点击鼠标左键
+    pyautogui.click(x=x, y=y)
+    random_sleep(0.1)
+    pyautogui.click(x=x, y=y)
     random_sleep(t)
     return 0
 
@@ -89,9 +91,9 @@ def check_status(w_pos, fname, threshold):
     return rms < threshold
 
 
-def perform_click(click_pos, status_lists, random_click: list = None, max_wait: int = math.inf):
+def perform_click(click_pos, status_lists, random_click: list = None, sleep_time=1, max_wait: int = math.inf):
     w_pos = get_window_position()
-    move_click(w_pos, click_pos)
+    move_click(w_pos, click_pos, t=sleep_time)
     w_pos = get_window_position()
 
     def check_condition(con_lists):
@@ -107,9 +109,9 @@ def perform_click(click_pos, status_lists, random_click: list = None, max_wait: 
             break
         w_pos = get_window_position()
         if random_click is not None:
-            move_click(w_pos, [x + random.randint(0, 10) - 5 for x in random_click])
+            move_click(w_pos, [x + random.randint(0, 10) - 5 for x in random_click], t=sleep_time)
         else:
-            random_sleep(1)
+            random_sleep(sleep_time)
         print('.', end='')
     print()
 
@@ -120,7 +122,10 @@ def night_party():
     click_pos = [650, 575]  # Nikki position in emulator
     w_pos = get_window_position()
     move_click(w_pos, click_pos, 1)
-    random_sleep(50)
+    if DEBUG_MODE:
+        random_sleep(50)
+    else:
+        random_sleep(180)
 
     # Check for update
     click_pos = [710, 1130]
@@ -133,12 +138,18 @@ def night_party():
     # login
     print('Begin login.')
     click_pos = [540, 1720]  # start position
-    perform_click(click_pos, [('nikki_home.png', 700, True)], random_click=[390, 1700])
+    perform_click(click_pos, [('nikki_home.png', 1000, True)], random_click=[390, 1700])
+    # Wait for another simulator.
+    click_pos = [390, 1700]  # blank area
+    random_sleep(10)
+    for i in range(7):
+        w_pos = get_window_position()
+        move_click(w_pos, click_pos, t=1)
 
     # Enter union
     print('Enter union.')
     click_pos = [995, 950]  # Union button location
-    perform_click(click_pos, [('nikki_union.png', 500, True)])
+    perform_click(click_pos, [('nikki_union.png', 1000, True)])
 
     # Enter party
     click_pos = [635, 1365]  # Party button location
@@ -149,20 +160,22 @@ def night_party():
     if not DEBUG_MODE:
         wait_until('07:10:00')
     click_pos = [520, 1265]  # Join party button
-    perform_click(click_pos, [('nikki_union_enter_party.png', 1000, False)], random_click=click_pos)
+    perform_click(click_pos, [('nikki_union_enter_party.png', 3000, False)], random_click=click_pos)
     move_click(w_pos, click_pos)
     move_click(w_pos, click_pos)
 
     # Enter something
-    click_pos = [400, 1905]  # text box
-    w_pos = get_window_position()
-    move_click(w_pos, click_pos, .5)
-    move_click(w_pos, click_pos, .3)
-    [press_key(msg=str(1)) for _ in range(0, random.randint(1, 3))]
-    click_pos = [1000, 1880]  # send button
-    move_click(w_pos, click_pos)
-    move_click(w_pos, click_pos)
-    move_click(w_pos, click_pos)
+    for i in range(2):
+        click_pos = [400, 1905]  # text box
+        w_pos = get_window_position()
+        move_click(w_pos, click_pos)
+        move_click(w_pos, click_pos, .5)
+        move_click(w_pos, click_pos, .3)
+        [press_key(msg=str(1)) for _ in range(0, random.randint(2, 5))]
+        click_pos = [1000, 1880]  # send button
+        move_click(w_pos, click_pos)
+        move_click(w_pos, click_pos)
+        move_click(w_pos, click_pos)
 
     # Take screenshots in party
     total_time = 300
@@ -175,7 +188,7 @@ def night_party():
         move_click(w_pos, click_pos)
 
 
-def schedule_task(task, schedule_time='07:05:00'):
+def schedule_task(task, schedule_time='07:00:00'):
     if DEBUG_MODE:  # Delay 5 seconds.
         t = (datetime.datetime.today()+datetime.timedelta(seconds=2)).time()
         # wait_until(t.strftime('%H:%M:%S'), interval=1)
@@ -186,13 +199,18 @@ def schedule_task(task, schedule_time='07:05:00'):
 
 if __name__ == '__main__':
     # night_party()
-    save_screenshots(get_window_position(), None, 'nikki_home.png')
+    # save_screenshots(get_window_position(), None, 'test.png')
+    # save_screenshots(get_window_position(), None, 'nikki_union.png')
+    # save_screenshots(get_window_position(), None, 'nikki_home.png')
     # check_status(get_window_position(), 'nikki_login.png', 1000)
+    # print(check_status(get_window_position(), 'nikki_home.png', 1000))
+    # print(check_status('38.png', 'nikki_home.png', 1000))
     # print(check_status('nikki_update.png', 'nikki_login_no_post.png', 100))
+    # print(check_status('54.png', 'nikki_union_enter_party.png', 100))
     # print(check_status('5_answer_party1.png', '5_answer_party2.png', 100))
     # print(check_status('5_answer_party2.png', '5_answer_party3.png', 100))
     # print(check_status('6_in_party0.png', '6_in_party20.png', 100))
     # print(check_status('6_in_party10.png', '6_in_party20.png', 100))
 
     # DEBUG_MODE = True
-    # schedule_task(night_party)
+    schedule_task(night_party)
